@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Obstacle Shooter</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #101827;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #ffffff;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #gameWrap {
+      position: relative;
+      width: min(100vw, 960px);
+      height: min(100vh, 540px);
+      aspect-ratio: 16 / 9;
+      background: #111827;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(180deg, #172033 0%, #0f172a 100%);
+    }
+
+    #hud {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      pointer-events: none;
+      font-weight: 700;
+      text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+      z-index: 2;
+    }
+
+    .hudBox {
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      backdrop-filter: blur(6px);
+    }
+
+    #message {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    #messageCard {
+      max-width: 90%;
+      padding: 24px 28px;
+      border-radius: 20px;
+      background: rgba(15, 23, 42, 0.86);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.38);
+      backdrop-filter: blur(8px);
+    }
+
+    #messageCard.titleScreen {
+      min-width: min(84vw, 720px);
+      padding: 32px 34px 28px;
+      background:
+        radial-gradient(circle at top, rgba(255, 255, 255, 0.16), transparent 38%),
+        linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.76));
+    }
+
+    #messageTitle {
+      font-size: clamp(28px, 5vw, 52px);
+      line-height: 1.1;
+      margin-bottom: 12px;
+    }
+
+    #messageTitle.titleLogo {
+      margin-bottom: 18px;
+      font-size: clamp(40px, 8vw, 76px);
+      font-weight: 900;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #f8fafc;
+      text-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+    }
+
+    #messageTitle.titleLogo .titleLetter {
+      display: inline-block;
+    }
+
+    #messageText {
+      font-size: clamp(14px, 2.4vw, 18px);
+      line-height: 1.7;
+      color: #dbeafe;
+    }
+
+    #messageText.titleCopy {
+      font-size: clamp(15px, 2.2vw, 20px);
+      line-height: 1.9;
+    }
+
+    .titleLead {
+      display: inline-block;
+      margin-bottom: 10px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: #f8fafc;
+      font-size: clamp(11px, 1.6vw, 14px);
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .titleHint {
+      display: block;
+      margin-top: 14px;
+      color: #fef08a;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+    }
+
+    #mobileControls {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 14px;
+      display: none;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 4;
+      pointer-events: none;
+    }
+
+    .controlGroup {
+      display: flex;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
+    .controlBtn {
+      width: 58px;
+      height: 58px;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(248, 250, 252, 0.14);
+      color: #ffffff;
+      font-size: 24px;
+      font-weight: 800;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    .controlBtn:active {
+      transform: translateY(1px) scale(0.98);
+      background: rgba(248, 250, 252, 0.24);
+    }
+
+    @media (hover: none) and (pointer: coarse) {
+      #mobileControls {
+        display: flex;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="gameWrap">
+    <canvas id="gameCanvas" width="960" height="540"></canvas>
+
+    <div id="hud">
+      <div class="hudBox" id="scoreBox">SCORE: <span id="scoreText">0</span></div>
+      <div class="hudBox" id="infoBox">SPACE: ATTACK / P・ESC: PAUSE</div>
+    </div>
+
+    <div id="message">
+      <div id="messageCard">
+        <div id="messageTitle">DODGERS</div>
+        <div id="messageText">
+          ↑ / ↓ キーで移動<br />
+          Space キーで攻撃<br />
+          Enter またはクリックでスタート
+        </div>
+      </div>
+    </div>
+
+    <div id="mobileControls" aria-label="mobile controls">
+      <div class="controlGroup">
+        <button class="controlBtn" id="upBtn" aria-label="up">▲</button>
+        <button class="controlBtn" id="downBtn" aria-label="down">▼</button>
+      </div>
+      <div class="controlGroup">
+        <button class="controlBtn" id="attackBtn" aria-label="attack">⚡</button>
+        <button class="controlBtn" id="pauseBtn" aria-label="pause">⏸</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    "use strict";
+
+    // ============================================================
+    // 設定
+    // ============================================================
+    // プレイヤー画像はHTMLファイルと同じフォルダに置いてください。
+    // 例：index.html と player.png が同じ階層にある状態。
+    // ファイル名が違う場合は、下の "player.png" を変更してください。
+    const PLAYER_IMAGE_SRC = "player.png";
+
+    const gameWrap = document.getElementById("gameWrap");
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const scoreText = document.getElementById("scoreText");
+    const scoreBox = document.getElementById("scoreBox");
+    const infoBox = document.getElementById("infoBox");
+    const message = document.getElementById("message");
+    const messageCard = document.getElementById("messageCard");
+    const messageTitle = document.getElementById("messageTitle");
+    const messageText = document.getElementById("messageText");
+    const hud = document.getElementById("hud");
+
+    const keys = {
+      up: false,
+      down: false,
+      attack: false,
+    };
+
+    const game = {
+      state: "title", // title / playing / paused / gameover / clear
+      width: canvas.width,
+      height: canvas.height,
+      score: 0,
+      bestScore: Number(localStorage.getItem("obstacleShooterBestScore") || 0),
+      time: 0,
+      lastTime: 0,
+      obstacleTimer: 0,
+      obstacleInterval: 1.05,
+      difficultyTimer: 0,
+      shakeTime: 0,
+      sequenceIndex: 0,
+      sequenceFlashTime: 0,
+      sequenceFlashType: "idle",
+    };
+
+    const player = {
+      x: 90,
+      y: canvas.height / 2,
+      width: 72,
+      height: 72,
+      speed: 360,
+      attackCooldown: 0,
+      attackInterval: 0.22,
+      invincibleTime: 0,
+    };
+
+    const bullets = [];
+    const obstacles = [];
+    const particles = [];
+    const obstaclePalette = [
+      "#ef4444",
+      "#f97316",
+      "#eab308",
+      "#22c55e",
+      "#06b6d4",
+      "#3b82f6",
+      "#a855f7",
+    ];
+    const dodgersSequence = [
+      { color: obstaclePalette[0], label: "D" },
+      { color: obstaclePalette[1], label: "O" },
+      { color: obstaclePalette[2], label: "D" },
+      { color: obstaclePalette[3], label: "G" },
+      { color: obstaclePalette[4], label: "E" },
+      { color: obstaclePalette[5], label: "R" },
+      { color: obstaclePalette[6], label: "S" },
+    ];
+    const stars = [];
+
+    const playerImage = new Image();
+    let playerImageLoaded = false;
+    playerImage.onload = () => {
+      playerImageLoaded = true;
+    };
+    playerImage.onerror = () => {
+      playerImageLoaded = false;
+      console.warn("プレイヤー画像を読み込めませんでした。PLAYER_IMAGE_SRC を確認してください:", PLAYER_IMAGE_SRC);
+    };
+    playerImage.src = PLAYER_IMAGE_SRC;
+
+    // ============================================================
+    // 初期背景演出
+    // ============================================================
+    for (let i = 0; i < 80; i++) {
+      stars.push({
+        x: Math.random() * game.width,
+        y: Math.random() * game.height,
+        radius: Math.random() * 1.8 + 0.4,
+        speed: Math.random() * 70 + 30,
+        alpha: Math.random() * 0.5 + 0.25,
+      });
+    }
+
+    // ============================================================
+    // 入力
+    // ============================================================
+    window.addEventListener("keydown", (event) => {
+      if (["ArrowUp", "ArrowDown", "Space", "Enter", "KeyP", "Escape"].includes(event.code)) {
+        event.preventDefault();
+      }
+
+      if (event.code === "ArrowUp") keys.up = true;
+      if (event.code === "ArrowDown") keys.down = true;
+      if (event.code === "Space") keys.attack = true;
+
+      if (event.code === "KeyP" || event.code === "Escape") {
+        togglePause();
+      }
+
+      if (event.code === "Enter") {
+        if (game.state === "title" || game.state === "gameover" || game.state === "clear") {
+          startGame();
+        }
+      }
+    });
+
+    window.addEventListener("keyup", (event) => {
+      if (event.code === "ArrowUp") keys.up = false;
+      if (event.code === "ArrowDown") keys.down = false;
+      if (event.code === "Space") keys.attack = false;
+    });
+
+    canvas.addEventListener("click", () => {
+      if (game.state === "title" || game.state === "gameover" || game.state === "clear") {
+        startGame();
+      } else if (game.state === "paused") {
+        resumeGame();
+      } else if (game.state === "playing") {
+        shootBullet();
+      }
+    });
+
+    setupHoldButton("upBtn", "up");
+    setupHoldButton("downBtn", "down");
+
+    const attackBtn = document.getElementById("attackBtn");
+    attackBtn.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      if (game.state === "playing") {
+        keys.attack = true;
+        shootBullet();
+      } else {
+        startGame();
+      }
+    });
+    attackBtn.addEventListener("pointerup", () => {
+      keys.attack = false;
+    });
+    attackBtn.addEventListener("pointercancel", () => {
+      keys.attack = false;
+    });
+
+    const pauseBtn = document.getElementById("pauseBtn");
+    pauseBtn.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      togglePause();
+    });
+
+    function setupHoldButton(buttonId, keyName) {
+      const button = document.getElementById(buttonId);
+      button.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        keys[keyName] = true;
+        if (game.state !== "playing") startGame();
+      });
+      button.addEventListener("pointerup", () => {
+        keys[keyName] = false;
+      });
+      button.addEventListener("pointerleave", () => {
+        keys[keyName] = false;
+      });
+      button.addEventListener("pointercancel", () => {
+        keys[keyName] = false;
+      });
+    }
+
+    // ============================================================
+    // ゲーム制御
+    // ============================================================
+    function startGame() {
+      game.state = "playing";
+      game.score = 0;
+      game.time = 0;
+      game.obstacleTimer = 0;
+      game.obstacleInterval = 1.05;
+      game.difficultyTimer = 0;
+      game.shakeTime = 0;
+      game.sequenceIndex = 0;
+      game.sequenceFlashTime = 0;
+      game.sequenceFlashType = "idle";
+
+      player.x = 90;
+      player.y = game.height / 2;
+      player.attackCooldown = 0;
+      player.invincibleTime = 0;
+
+      bullets.length = 0;
+      obstacles.length = 0;
+      particles.length = 0;
+
+      scoreText.textContent = "0";
+      hideMessage();
+      hud.style.opacity = "1";
+    }
+
+    function pauseGame() {
+      if (game.state !== "playing") return;
+      game.state = "paused";
+      showMessage(
+        "PAUSED",
+        "P / Esc キーで再開<br />クリックまたは一時停止ボタンでも再開できます"
+      );
+    }
+
+    function resumeGame() {
+      if (game.state !== "paused") return;
+      game.state = "playing";
+      hideMessage();
+    }
+
+    function togglePause() {
+      if (game.state === "playing") {
+        pauseGame();
+      } else if (game.state === "paused") {
+        resumeGame();
+      }
+    }
+
+    function endGame() {
+      game.state = "gameover";
+      game.shakeTime = 0.35;
+
+      if (game.score > game.bestScore) {
+        game.bestScore = game.score;
+        localStorage.setItem("obstacleShooterBestScore", String(game.bestScore));
+      }
+
+      showMessage(
+        "GAME OVER",
+        `SCORE: ${Math.floor(game.score)}<br />BEST: ${Math.floor(game.bestScore)}<br /><br />Enter またはクリックでリトライ`
+      );
+    }
+
+    function showMessage(title, text) {
+      messageTitle.innerHTML = title;
+      messageText.innerHTML = text;
+      message.style.display = "flex";
+    }
+
+    function hideMessage() {
+      message.style.display = "none";
+    }
+
+    function pauseGame() {
+      if (game.state !== "playing") return;
+      game.state = "paused";
+      showMessage(
+        "PAUSED",
+        "P / Esc キーで再開<br />クリックまたは攻撃ボタンでも再開できます"
+      );
+    }
+
+    function endGame() {
+      game.state = "gameover";
+      game.shakeTime = 0.35;
+
+      if (game.score > game.bestScore) {
+        game.bestScore = game.score;
+        localStorage.setItem("obstacleShooterBestScore", String(game.bestScore));
+      }
+
+      showMessage(
+        "GAME OVER",
+        `SCORE: ${Math.floor(game.score)}<br />BEST: ${Math.floor(game.bestScore)}<br /><br />Enter またはクリックでリトライ`
+      );
+    }
+
+    function clearGame() {
+      game.state = "clear";
+      game.shakeTime = 0;
+
+      if (game.score > game.bestScore) {
+        game.bestScore = game.score;
+        localStorage.setItem("obstacleShooterBestScore", String(game.bestScore));
+      }
+
+      showMessage(
+        "CLEAR",
+        `DODGERS 縺ｮ鬮倥§鬆ｭ縺ｧ障害物を順番通りに破壊しました<br />SCORE: ${Math.floor(game.score)}<br />BEST: ${Math.floor(game.bestScore)}<br /><br />Enter 縺ｾ縺溘・繧ｯ繝ｪ繝・け縺ｧ蜀・ｮｹ`
+      );
+    }
+
+    function showMessage(title, text) {
+      messageCard.classList.remove("titleScreen");
+      messageTitle.classList.remove("titleLogo");
+      messageText.classList.remove("titleCopy");
+      messageTitle.innerHTML = title;
+      messageText.innerHTML = text;
+      message.style.display = "flex";
+    }
+
+    function renderTitleLogo(text) {
+      messageTitle.innerHTML = text
+        .split("")
+        .map((char, index) => {
+          const color = obstaclePalette[index % obstaclePalette.length];
+          return `<span class="titleLetter" style="color: ${color};">${char}</span>`;
+        })
+        .join("");
+    }
+
+    function showTitleScreen() {
+      game.state = "title";
+      hud.style.opacity = "0.28";
+      messageCard.classList.add("titleScreen");
+      messageTitle.classList.add("titleLogo");
+      messageText.classList.add("titleCopy");
+      renderTitleLogo("DODGERS");
+      messageText.innerHTML =
+        '<span class="titleLead">Arcade Survival</span><br />' +
+        "障害物をかわして撃ち抜く、ハイスピード回避シューティング<br />" +
+        "上下キーで移動 / Space で攻撃" +
+        '<span class="titleHint">Enter またはクリックでスタート</span>';
+      message.style.display = "flex";
+    }
+
+    // ============================================================
+    // 更新処理
+    // ============================================================
+    function pauseGame() {
+      if (game.state !== "playing") return;
+      game.state = "paused";
+      showMessage("PAUSED", "P / Esc で再開<br />クリックでも再開できます");
+    }
+
+    function resumeGame() {
+      if (game.state !== "paused") return;
+      game.state = "playing";
+      hideMessage();
+    }
+
+    function togglePause() {
+      if (game.state === "playing") {
+        pauseGame();
+      } else if (game.state === "paused") {
+        resumeGame();
+      }
+    }
+
+    function endGame() {
+      game.state = "gameover";
+      game.shakeTime = 0.35;
+
+      if (game.score > game.bestScore) {
+        game.bestScore = game.score;
+        localStorage.setItem("obstacleShooterBestScore", String(game.bestScore));
+      }
+
+      showMessage(
+        "GAME OVER",
+        `SCORE: ${Math.floor(game.score)}<br />BEST: ${Math.floor(game.bestScore)}<br /><br />Enter またはクリックでリトライ`
+      );
+    }
+
+    function clearGame() {
+      game.state = "clear";
+      game.shakeTime = 0;
+
+      if (game.score > game.bestScore) {
+        game.bestScore = game.score;
+        localStorage.setItem("obstacleShooterBestScore", String(game.bestScore));
+      }
+
+      showMessage(
+        "CLEAR",
+        `DODGERS の順番どおりに障害物を破壊しました<br />SCORE: ${Math.floor(game.score)}<br />BEST: ${Math.floor(game.bestScore)}<br /><br />Enter またはクリックでリトライ`
+      );
+    }
+
+    function showTitleScreen() {
+      game.state = "title";
+      hud.style.opacity = "0.28";
+      messageCard.classList.add("titleScreen");
+      messageTitle.classList.add("titleLogo");
+      messageText.classList.add("titleCopy");
+      renderTitleLogo("DODGERS");
+      messageText.innerHTML =
+        '<span class="titleLead">Arcade Survival</span><br />' +
+        "DODGERS の配色どおりに障害物を破壊するとクリアです<br />" +
+        'Arrow Up / Down で移動 / Space で攻撃<span class="titleHint">Enter またはクリックでスタート</span>';
+      message.style.display = "flex";
+    }
+
+    function pauseGame() {
+      if (game.state !== "playing") return;
+      game.state = "paused";
+      showMessage("PAUSED", "Press P / Esc to resume<br />Click to continue");
+    }
+
+    function endGame() {
+      game.state = "gameover";
+      game.shakeTime = 0.35;
+
+      if (game.score > game.bestScore) {
+        game.bestScore = game.score;
+        localStorage.setItem("obstacleShooterBestScore", String(game.bestScore));
+      }
+
+      showMessage(
+        "GAME OVER",
+        `SCORE: ${Math.floor(game.score)}<br />BEST: ${Math.floor(game.bestScore)}<br /><br />Press Enter or click to retry`
+      );
+    }
+
+    function clearGame() {
+      game.state = "clear";
+      game.shakeTime = 0;
+
+      if (game.score > game.bestScore) {
+        game.bestScore = game.score;
+        localStorage.setItem("obstacleShooterBestScore", String(game.bestScore));
+      }
+
+      showMessage(
+        "CLEAR",
+        `You completed the hidden DODGERS sequence.<br />SCORE: ${Math.floor(game.score)}<br />BEST: ${Math.floor(game.bestScore)}<br /><br />Press Enter or click to retry`
+      );
+    }
+
+    function showTitleScreen() {
+      game.state = "title";
+      hud.style.opacity = "0.28";
+      messageCard.classList.add("titleScreen");
+      messageTitle.classList.add("titleLogo");
+      messageText.classList.add("titleCopy");
+      renderTitleLogo("DODGERS");
+      messageText.innerHTML =
+        '<span class="titleLead">How to Play</span><br />' +
+        'Arrow Up / Down: Move / Space: Attack<span class="titleHint">Press Enter or click to start</span>';
+      message.style.display = "flex";
+    }
+
+    function update(deltaTime) {
+      if (game.state === "paused") {
+        return;
+      }
+
+      updateBackground(deltaTime);
+      updateSequenceFlash(deltaTime);
+
+      if (game.state !== "playing") {
+        updateParticles(deltaTime);
+        return;
+      }
+
+      game.time += deltaTime;
+      game.difficultyTimer += deltaTime;
+      game.score += deltaTime * 10;
+      scoreText.textContent = String(Math.floor(game.score));
+
+      updateDifficulty(deltaTime);
+      updatePlayer(deltaTime);
+      updateBullets(deltaTime);
+      updateObstacles(deltaTime);
+      updateParticles(deltaTime);
+      checkCollisions();
+
+      if (game.shakeTime > 0) {
+        game.shakeTime -= deltaTime;
+      }
+    }
+
+    function updateSequenceFlash(deltaTime) {
+      if (game.sequenceFlashTime > 0) {
+        game.sequenceFlashTime = Math.max(0, game.sequenceFlashTime - deltaTime);
+        if (game.sequenceFlashTime === 0) {
+          game.sequenceFlashType = "idle";
+        }
+      }
+    }
+
+    function updateDifficulty(deltaTime) {
+      if (game.difficultyTimer >= 7) {
+        game.difficultyTimer = 0;
+        game.obstacleInterval = Math.max(0.45, game.obstacleInterval - 0.08);
+      }
+
+      game.obstacleTimer += deltaTime;
+      if (game.obstacleTimer >= game.obstacleInterval) {
+        game.obstacleTimer = 0;
+        spawnObstacle();
+      }
+    }
+
+    function updateBackground(deltaTime) {
+      for (const star of stars) {
+        star.x -= star.speed * deltaTime;
+        if (star.x < -10) {
+          star.x = game.width + 10;
+          star.y = Math.random() * game.height;
+          star.radius = Math.random() * 1.8 + 0.4;
+          star.speed = Math.random() * 70 + 30;
+          star.alpha = Math.random() * 0.5 + 0.25;
+        }
+      }
+    }
+
+    function updatePlayer(deltaTime) {
+      if (keys.up) {
+        player.y -= player.speed * deltaTime;
+      }
+      if (keys.down) {
+        player.y += player.speed * deltaTime;
+      }
+
+      const halfHeight = player.height / 2;
+      player.y = clamp(player.y, halfHeight + 18, game.height - halfHeight - 18);
+
+      if (player.attackCooldown > 0) {
+        player.attackCooldown -= deltaTime;
+      }
+
+      if (player.invincibleTime > 0) {
+        player.invincibleTime -= deltaTime;
+      }
+
+      if (keys.attack) {
+        shootBullet();
+      }
+    }
+
+    function shootBullet() {
+      if (game.state !== "playing") return;
+      if (player.attackCooldown > 0) return;
+
+      bullets.push({
+        x: player.x + player.width / 2 - 2,
+        y: player.y,
+        width: 28,
+        height: 8,
+        speed: 620,
+        life: 1.2,
+      });
+
+      player.attackCooldown = player.attackInterval;
+      createMuzzleParticles(player.x + player.width / 2 + 4, player.y);
+    }
+
+    function updateBullets(deltaTime) {
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        const bullet = bullets[i];
+        bullet.x += bullet.speed * deltaTime;
+        bullet.life -= deltaTime;
+
+        if (bullet.x > game.width + 60 || bullet.life <= 0) {
+          bullets.splice(i, 1);
+        }
+      }
+    }
+
+    function spawnObstacle() {
+      const size = randomRange(42, 76);
+      const y = randomRange(size / 2 + 24, game.height - size / 2 - 24);
+      const baseSpeed = 230 + game.time * 4;
+      const maxHp = Math.min(5, Math.max(1, Math.ceil((size - 40) / 8)));
+      const color =
+        obstaclePalette[Math.floor(Math.random() * obstaclePalette.length)];
+
+      obstacles.push({
+        x: game.width + size,
+        y,
+        width: size,
+        height: size,
+        speed: randomRange(baseSpeed, baseSpeed + 90),
+        rotation: Math.random() * Math.PI * 2,
+        rotationSpeed: randomRange(-3, 3),
+        hp: maxHp,
+        maxHp,
+        color,
+      });
+    }
+
+    function updateObstacles(deltaTime) {
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        const obstacle = obstacles[i];
+        obstacle.x -= obstacle.speed * deltaTime;
+        obstacle.rotation += obstacle.rotationSpeed * deltaTime;
+
+        if (obstacle.x < -obstacle.width - 80) {
+          obstacles.splice(i, 1);
+        }
+      }
+    }
+
+    function updateParticles(deltaTime) {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const particle = particles[i];
+        particle.x += particle.vx * deltaTime;
+        particle.y += particle.vy * deltaTime;
+        particle.life -= deltaTime;
+        particle.size *= 0.985;
+
+        if (particle.life <= 0 || particle.size <= 0.5) {
+          particles.splice(i, 1);
+        }
+      }
+    }
+
+    // ============================================================
+    // 当たり判定
+    // ============================================================
+    function checkCollisions() {
+      const playerRect = getPlayerRect();
+
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        const obstacle = obstacles[i];
+        const obstacleRect = getObstacleRect(obstacle);
+
+        if (rectsOverlap(playerRect, obstacleRect)) {
+          if (player.invincibleTime <= 0) {
+            createExplosion(player.x, player.y, 22);
+            endGame();
+            return;
+          }
+        }
+
+        for (let j = bullets.length - 1; j >= 0; j--) {
+          const bullet = bullets[j];
+          const bulletRect = getBulletRect(bullet);
+
+          if (rectsOverlap(bulletRect, obstacleRect)) {
+            bullets.splice(j, 1);
+            obstacle.hp -= 1;
+            createHitParticles(bullet.x, bullet.y);
+
+            if (obstacle.hp <= 0) {
+              createExplosion(obstacle.x, obstacle.y, 18);
+              obstacles.splice(i, 1);
+              game.score += 45 + (obstacle.maxHp - 1) * 35;
+              scoreText.textContent = String(Math.floor(game.score));
+              handleObstacleDestroyed(obstacle.color);
+
+              if (game.state !== "playing") {
+                return;
+              }
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    function handleObstacleDestroyed(color) {
+      const expectedStep = dodgersSequence[game.sequenceIndex];
+
+      if (!expectedStep) return;
+
+      if (color === expectedStep.color) {
+        game.sequenceIndex += 1;
+        game.sequenceFlashType = "success";
+        game.sequenceFlashTime = 0.45;
+
+        if (game.sequenceIndex >= dodgersSequence.length) {
+          clearGame();
+        }
+        return;
+      }
+
+      game.sequenceIndex = 0;
+      game.sequenceFlashType = "reset";
+      game.sequenceFlashTime = 0.65;
+      game.shakeTime = Math.max(game.shakeTime, 0.18);
+    }
+
+    function getPlayerRect() {
+      return {
+        x: player.x - player.width * 0.35,
+        y: player.y - player.height * 0.35,
+        width: player.width * 0.7,
+        height: player.height * 0.7,
+      };
+    }
+
+    function getObstacleRect(obstacle) {
+      return {
+        x: obstacle.x - obstacle.width * 0.42,
+        y: obstacle.y - obstacle.height * 0.42,
+        width: obstacle.width * 0.84,
+        height: obstacle.height * 0.84,
+      };
+    }
+
+    function getBulletRect(bullet) {
+      return {
+        x: bullet.x,
+        y: bullet.y - bullet.height / 2,
+        width: bullet.width,
+        height: bullet.height,
+      };
+    }
+
+    function rectsOverlap(a, b) {
+      return (
+        a.x < b.x + b.width &&
+        a.x + a.width > b.x &&
+        a.y < b.y + b.height &&
+        a.y + a.height > b.y
+      );
+    }
+
+    // ============================================================
+    // パーティクル
+    // ============================================================
+    function createMuzzleParticles(x, y) {
+      for (let i = 0; i < 5; i++) {
+        particles.push({
+          x,
+          y,
+          vx: randomRange(-20, 90),
+          vy: randomRange(-45, 45),
+          size: randomRange(2, 5),
+          life: randomRange(0.12, 0.24),
+          type: "muzzle",
+        });
+      }
+    }
+
+    function createHitParticles(x, y) {
+      for (let i = 0; i < 8; i++) {
+        particles.push({
+          x,
+          y,
+          vx: randomRange(-120, 80),
+          vy: randomRange(-80, 80),
+          size: randomRange(2, 5),
+          life: randomRange(0.18, 0.34),
+          type: "hit",
+        });
+      }
+    }
+
+    function createExplosion(x, y, count) {
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = randomRange(80, 260);
+        particles.push({
+          x,
+          y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          size: randomRange(3, 8),
+          life: randomRange(0.25, 0.58),
+          type: "explosion",
+        });
+      }
+    }
+
+    // ============================================================
+    // 描画
+    // ============================================================
+    function draw() {
+      ctx.save();
+      ctx.clearRect(0, 0, game.width, game.height);
+
+      if (game.shakeTime > 0) {
+        const shake = game.shakeTime * 12;
+        ctx.translate(randomRange(-shake, shake), randomRange(-shake, shake));
+      }
+
+      drawBackground();
+      drawSequencePanel();
+      drawBullets();
+      drawObstacles();
+      drawPlayer();
+      drawParticles();
+
+      ctx.restore();
+    }
+
+    function drawBackground() {
+      const gradient = ctx.createLinearGradient(0, 0, 0, game.height);
+      gradient.addColorStop(0, "#172033");
+      gradient.addColorStop(1, "#0f172a");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, game.width, game.height);
+
+      ctx.save();
+      for (const star of stars) {
+        ctx.globalAlpha = star.alpha;
+        ctx.fillStyle = "#e0f2fe";
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+
+      // レーンの目安線
+      ctx.save();
+      ctx.globalAlpha = 0.16;
+      ctx.strokeStyle = "#dbeafe";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([12, 18]);
+      ctx.beginPath();
+      ctx.moveTo(0, game.height / 3);
+      ctx.lineTo(game.width, game.height / 3);
+      ctx.moveTo(0, (game.height / 3) * 2);
+      ctx.lineTo(game.width, (game.height / 3) * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawSequencePanel() {
+      const safeMargin = 18;
+      const panelY = 14;
+      const panelHeight = 66;
+      const slotGap = 10;
+      const leftReserve = getHudReserveWidth(scoreBox) + safeMargin;
+      const rightReserve = getHudReserveWidth(infoBox) + safeMargin;
+      const panelX = Math.max(150, leftReserve);
+      const availableWidth = Math.max(440, game.width - panelX - rightReserve - safeMargin);
+      const panelWidth = Math.min(596, availableWidth);
+      const slotWidth =
+        (panelWidth - 36 - slotGap * (dodgersSequence.length - 1)) /
+        dodgersSequence.length;
+      const slotHeight = 30;
+      const slotY = panelY + 24;
+      const flashAlpha = game.sequenceFlashTime > 0 ? 0.22 + game.sequenceFlashTime * 0.18 : 0;
+      let borderColor = "rgba(255, 255, 255, 0.12)";
+
+      if (game.sequenceFlashType === "success") {
+        borderColor = `rgba(250, 204, 21, ${0.2 + flashAlpha})`;
+      } else if (game.sequenceFlashType === "reset") {
+        borderColor = `rgba(248, 113, 113, ${0.24 + flashAlpha})`;
+      }
+
+      ctx.save();
+      ctx.fillStyle = "rgba(15, 23, 42, 0.74)";
+      ctx.strokeStyle = borderColor;
+      ctx.lineWidth = 2;
+      roundRect(ctx, panelX, panelY, panelWidth, panelHeight, 20);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "#e2e8f0";
+      ctx.font = "bold 13px system-ui";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText("SEQUENCE", panelX + 18, panelY + 16);
+
+      for (let i = 0; i < dodgersSequence.length; i++) {
+        const step = dodgersSequence[i];
+        const slotX = panelX + 18 + i * (slotWidth + slotGap);
+        const isDone = i < game.sequenceIndex;
+
+        ctx.save();
+        ctx.fillStyle = isDone ? step.color : "rgba(148, 163, 184, 0.18)";
+        roundRect(ctx, slotX, slotY, slotWidth, slotHeight, 10);
+        ctx.fill();
+
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = isDone ? "rgba(248, 250, 252, 0.9)" : "rgba(148, 163, 184, 0.65)";
+        roundRect(ctx, slotX, slotY, slotWidth, slotHeight, 10);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      if (game.sequenceFlashType === "reset" && game.sequenceFlashTime > 0) {
+        ctx.fillStyle = `rgba(254, 226, 226, ${0.65 + game.sequenceFlashTime * 0.2})`;
+        ctx.font = "bold 12px system-ui";
+        ctx.textAlign = "right";
+        ctx.fillText("MISS! START OVER", panelX + panelWidth - 18, panelY + panelHeight - 12);
+      }
+
+      ctx.restore();
+    }
+
+    function drawPlayer() {
+      ctx.save();
+      ctx.translate(player.x, player.y);
+
+      const bob = Math.sin(game.time * 10) * 3;
+      ctx.translate(0, bob);
+
+      // 影
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = "#000000";
+      ctx.beginPath();
+      ctx.ellipse(0, player.height / 2 - 4, player.width * 0.34, 9, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      if (playerImageLoaded) {
+        ctx.drawImage(
+          playerImage,
+          -player.width / 2,
+          -player.height / 2,
+          player.width,
+          player.height
+        );
+      } else {
+        // 画像がない場合の仮プレイヤー。危機管理です、サー。
+        ctx.fillStyle = "#38bdf8";
+        ctx.beginPath();
+        ctx.moveTo(player.width / 2, 0);
+        ctx.lineTo(-player.width / 2, -player.height / 2);
+        ctx.lineTo(-player.width / 2, player.height / 2);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = "#e0f2fe";
+        ctx.lineWidth = 4;
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+
+    function drawBullets() {
+      for (const bullet of bullets) {
+        ctx.save();
+        const gradient = ctx.createLinearGradient(bullet.x, bullet.y, bullet.x + bullet.width, bullet.y);
+        gradient.addColorStop(0, "#fef08a");
+        gradient.addColorStop(1, "#f97316");
+        ctx.fillStyle = gradient;
+        roundRect(ctx, bullet.x, bullet.y - bullet.height / 2, bullet.width, bullet.height, 8);
+        ctx.fill();
+
+        ctx.globalAlpha = 0.35;
+        ctx.fillStyle = "#fde68a";
+        roundRect(ctx, bullet.x - 14, bullet.y - 3, 18, 6, 6);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    function drawObstacles() {
+      for (const obstacle of obstacles) {
+        ctx.save();
+        ctx.translate(obstacle.x, obstacle.y);
+        ctx.rotate(obstacle.rotation);
+
+        const hpRatio = obstacle.hp / obstacle.maxHp;
+        ctx.fillStyle = obstacle.color;
+        ctx.strokeStyle = hpRatio < 1 ? "#fde047" : "#f8fafc";
+        ctx.lineWidth = 4;
+
+        roundRect(
+          ctx,
+          -obstacle.width / 2,
+          -obstacle.height / 2,
+          obstacle.width,
+          obstacle.height,
+          12
+        );
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.save();
+        ctx.globalAlpha = 0.22;
+        ctx.fillStyle = "#ffffff";
+        roundRect(
+          ctx,
+          -obstacle.width / 2 + 8,
+          -obstacle.height / 2 + 8,
+          obstacle.width * 0.42,
+          obstacle.height * 0.18,
+          8
+        );
+        ctx.fill();
+        ctx.restore();
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 24px system-ui";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(String(obstacle.hp), 0, 1);
+
+        ctx.restore();
+      }
+    }
+
+    function drawParticles() {
+      ctx.save();
+      for (const particle of particles) {
+        ctx.globalAlpha = Math.max(0, particle.life * 2);
+        if (particle.type === "explosion") ctx.fillStyle = "#fb923c";
+        else if (particle.type === "hit") ctx.fillStyle = "#fef08a";
+        else ctx.fillStyle = "#fde68a";
+
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // ============================================================
+    // ユーティリティ
+    // ============================================================
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function getHudReserveWidth(element) {
+      if (!element || !gameWrap) return 0;
+
+      const wrapWidth = gameWrap.clientWidth || game.width;
+      if (!wrapWidth) return 0;
+
+      return (element.offsetWidth / wrapWidth) * game.width;
+    }
+
+    function randomRange(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    function roundRect(context, x, y, width, height, radius) {
+      const r = Math.min(radius, width / 2, height / 2);
+      context.beginPath();
+      context.moveTo(x + r, y);
+      context.lineTo(x + width - r, y);
+      context.quadraticCurveTo(x + width, y, x + width, y + r);
+      context.lineTo(x + width, y + height - r);
+      context.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+      context.lineTo(x + r, y + height);
+      context.quadraticCurveTo(x, y + height, x, y + height - r);
+      context.lineTo(x, y + r);
+      context.quadraticCurveTo(x, y, x + r, y);
+      context.closePath();
+    }
+
+    // ============================================================
+    // メインループ
+    // ============================================================
+    function gameLoop(currentTime) {
+      const seconds = currentTime / 1000;
+      const deltaTime = Math.min(0.033, seconds - game.lastTime || 0);
+      game.lastTime = seconds;
+
+      update(deltaTime);
+      draw();
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    showTitleScreen();
+    requestAnimationFrame(gameLoop);
+  </script>
+</body>
+</html>
