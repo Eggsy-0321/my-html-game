@@ -52,6 +52,7 @@
       left: 16px;
       right: 16px;
       display: flex;
+      align-items: flex-start;
       justify-content: space-between;
       gap: 16px;
       pointer-events: none;
@@ -60,12 +61,46 @@
       z-index: 2;
     }
 
+    .hudStack {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+    }
+
     .hudBox {
-      padding: 8px 12px;
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 12px;
       border-radius: 999px;
+      line-height: 1;
       background: rgba(15, 23, 42, 0.65);
       border: 1px solid rgba(255, 255, 255, 0.14);
       backdrop-filter: blur(6px);
+    }
+
+    .hudTitle {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-transform: uppercase;
+      background: rgba(15, 23, 42, 0.32);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .hudTitleLetter {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--title-color);
+      opacity: 0.78;
+      text-shadow: 0 0 10px color-mix(in srgb, var(--title-color) 30%, transparent);
     }
 
     #message {
@@ -197,10 +232,20 @@
 <body>
   <div id="gameWrap">
     <canvas id="gameCanvas" width="960" height="540"></canvas>
-
     <div id="hud">
       <div class="hudBox" id="scoreBox">SCORE: <span id="scoreText">0</span></div>
+      <div class="hudStack">
+        <div class="hudTitle" aria-label="DODGERS">
+          <span class="hudTitleLetter" style="--title-color: #ef4444;">D</span>
+          <span class="hudTitleLetter" style="--title-color: #f97316;">O</span>
+          <span class="hudTitleLetter" style="--title-color: #eab308;">D</span>
+          <span class="hudTitleLetter" style="--title-color: #22c55e;">G</span>
+          <span class="hudTitleLetter" style="--title-color: #06b6d4;">E</span>
+          <span class="hudTitleLetter" style="--title-color: #3b82f6;">R</span>
+          <span class="hudTitleLetter" style="--title-color: #a855f7;">S</span>
+        </div>
       <div class="hudBox" id="infoBox">SPACE: ATTACK / P・ESC: PAUSE</div>
+      </div>
     </div>
 
     <div id="message">
@@ -802,7 +847,7 @@
       const size = randomRange(42, 76);
       const y = randomRange(size / 2 + 24, game.height - size / 2 - 24);
       const baseSpeed = 230 + game.time * 4;
-      const maxHp = Math.min(5, Math.max(1, Math.ceil((size - 40) / 8)));
+      const maxHp = Math.min(3, Math.max(1, Math.ceil((size - 40) / 8)));
       const color =
         obstaclePalette[Math.floor(Math.random() * obstaclePalette.length)];
 
