@@ -226,6 +226,10 @@
       #mobileControls {
         display: flex;
       }
+
+      #infoBox {
+        display: none;
+      }
     }
   </style>
 </head>
@@ -294,6 +298,7 @@
     const messageTitle = document.getElementById("messageTitle");
     const messageText = document.getElementById("messageText");
     const hud = document.getElementById("hud");
+    const mobileControlsQuery = window.matchMedia("(hover: none) and (pointer: coarse)");
 
     const keys = {
       up: false,
@@ -594,6 +599,10 @@
         .join("");
     }
 
+    function isMobileControls() {
+      return mobileControlsQuery.matches;
+    }
+
     function showTitleScreen() {
       game.state = "title";
       hud.style.opacity = "0.28";
@@ -679,7 +688,12 @@
     function pauseGame() {
       if (game.state !== "playing") return;
       game.state = "paused";
-      showMessage("PAUSED", "Press P / Esc to resume<br />Click to continue");
+      showMessage(
+        "PAUSED",
+        isMobileControls()
+          ? "Tap the pause button or screen to resume"
+          : "Press P / Esc to resume<br />Click to continue"
+      );
     }
 
     function endGame() {
@@ -721,7 +735,9 @@
       renderTitleLogo("DODGERS");
       messageText.innerHTML =
         '<span class="titleLead">How to Play</span><br />' +
-        'Arrow Up / Down: Move / Space: Attack<span class="titleHint">Press Enter or click to start</span>';
+        (isMobileControls()
+          ? 'Use the on-screen buttons to move and attack<span class="titleHint">Tap to start</span>'
+          : 'Arrow Up / Down: Move / Space: Attack<span class="titleHint">Press Enter or click to start</span>');
       message.style.display = "flex";
     }
 
